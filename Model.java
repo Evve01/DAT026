@@ -15,7 +15,14 @@ class Model {
     final double acc_gravity = 9.82;
 	double areaWidth, areaHeight;
     final double startEnergy;
+
+    /**
+     * counter, maxError and minError are all used for checking and outputting discrepancies in the energy of the
+     * system.
+     */
     int counter = 0;
+    double maxError = 0;
+    double minError = 0;
 
 	Ball [] balls;
 
@@ -32,6 +39,11 @@ class Model {
         startEnergy =  balls[0].getMechanicalEnergy() + balls[1].getMechanicalEnergy();
 	}
 
+    /**
+     * Advance the simulation one frame.
+     *
+     * @param deltaT The time since the last frame.
+     */
 	void step(double deltaT) {
         showEnergyDiff();
         if(areBallsColliding()){
@@ -61,17 +73,37 @@ class Model {
 
     void showEnergyDiff(){
         double currentEnergy = getCurrentEnergy();
+        double percentErr = (currentEnergy - startEnergy) / startEnergy;
+        if (percentErr > maxError) {
+            maxError = percentErr;
+        }
+        if (percentErr < minError) {
+            minError = percentErr;
+        }
         if (currentEnergy != startEnergy) {
             counter += 1;
             if (counter >= 5) {
-                System.out.println(currentEnergy - startEnergy);
+                System.out.println(String.format("%s, %s, %s", percentErr, maxError, minError));
             }
         }
     }
+
+    /**
+     * Gets the current total mechanical energy of the system.
+     *
+     * @return the energy.
+     */
     double getCurrentEnergy(){
         return balls[0].getMechanicalEnergy() + balls[1].getMechanicalEnergy();
     }
-    void collisoinWithBorderEvent(Ball b){
+
+    /**
+     * Checks for and handles collision with any of the edges.
+     *
+     * @param b The ball to check
+     * @return If the collision reversed the y velocity.
+     */
+    boolean checkAndHandleCollisionWithEdge(Ball b) {
         // detect collision with the border
         if (b.position.getX() < b.radius) {
             b.velocity.setXDir(1);
@@ -85,7 +117,18 @@ class Model {
             b.velocity.setYDir(1);
             return true;
         }
+        if (b.position.getY() > areaHeight - b.radius) {
+            b.velocity.setYDir(-1);
+            return true;
+        }
+        return false;
     }
+
+    /**
+     * Update the positions of the balls.
+     *
+     * @param deltaT The time since last frame.
+     */
     void moveBalls(double deltaT){
         for (Ball b : balls) {
         // compute new position according to the speed of the ball
@@ -93,6 +136,12 @@ class Model {
         }
     }
 
+    /**
+     * Compute the new velocities for the balls after a collision between them.
+     *
+     * @param ball1
+     * @param ball2
+     */
     void ballCollision(Ball ball1, Ball ball2) {
         Vector2d u1 = ball1.velocity;
         Vector2d u2 = ball2.velocity;
