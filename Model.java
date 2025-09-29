@@ -115,19 +115,31 @@ class Model {
 	 * Simple inner class describing balls.
 	 */
 	class Ball {
-		
+        /**
+         * Position and velocities of the ball.
+         */
+        Vector2d position, velocity;
+
+        /**
+         * Radius and mass of the ball.
+         */
+        double radius, mass;
+
 		Ball(double x, double y, double vx, double vy, double r, double mass) {
-			this.x = x;
-			this.y = y;
-			this.vx = vx;
-			this.vy = vy;
+            position = new Vector2d(x, y);
+            velocity = new Vector2d(vx, vy);
 			this.radius = r;
             this.mass = mass;
 		}
 
-		/**
-		 * Position, speed, and radius of the ball. You may wish to add other attributes.
-		 */
-		double x, y, vx, vy, radius, mass;
+        /**
+         * Computes the mechanical energy of the ball, i.e. the sum of kinetic and potential energy.
+         *
+         * @return the mechanical energy.
+         */
+        double getMechanicalEnergy() {
+            return 0.5 * mass * velocity.getMagnitude() * velocity.getMagnitude()
+                 + mass * position.getY() * acc_gravity;
+        }
 	}
 }
