@@ -34,31 +34,29 @@ class Model {
 
 	void step(double deltaT) {
         showEnergyDiff();
-        if(ballsColliding()){
+        if(areBallsColliding()){
             ballCollision(balls[0], balls[1]);
         }
 
-		for (Ball b : balls) {
-            collisoinWithBorderEvent(b);
-			if (b.y < b.radius) {
-				b.vy *= -1;
-                b.y = b.radius;
-			}
-
-            if (b.y > areaHeight - b.radius) {
-                b.vy *= -1;
-                b.y = areaHeight - b.radius;
+		for (Ball b: balls) {
+            // Do not apply gravity if the ball collided with the top or bottom. If we do not do this, we get a net
+            // increase/decrease in energy, respectively.
+            if(!checkAndHandleCollisionWithEdge(b)) {
+                b.velocity = b.velocity.sub(new Vector2d(0, acc_gravity*deltaT));
             }
-            //b.vy -= acc_gravity * deltaT / 2;
-            b.vy -= acc_gravity * deltaT;
 		}
         moveBalls(deltaT);
 	}
-    boolean ballsColliding(){
-        double distanceX = Math.pow((balls[0].x - balls[1].x), 2);
-        double distanceY = Math.pow((balls[0].y - balls[1].y), 2);
 
-        return distanceX + distanceY <= Math.pow(balls[0].radius + balls[1].radius, 2);
+    /**
+     * Check if the balls are colliding, i.e. the distance between their centers is less than ot equal to the sum of
+     * their radii.
+     *
+     * @return if they collide.
+     */
+    boolean areBallsColliding(){
+        Vector2d distance = balls[0].position.sub(balls[1].position);
+        return distance.getMagnitude() <= balls[0].radius + balls[1].radius;
     }
 
     void showEnergyDiff(){
@@ -71,43 +69,44 @@ class Model {
         }
     }
     double getCurrentEnergy(){
-        double ball0Energy = (Math.pow(balls[0].vx,2) + Math.pow(balls[0].vy,2)) * balls[0].mass * 1 / 2
-                + balls[0].mass * balls[0].y * acc_gravity;
-        double ball1Energy = (Math.pow(balls[1].vx,2) + Math.pow(balls[1].vy,2))* balls[1].mass * 1 / 2
-                + balls[1].mass * balls[1].y * acc_gravity;
-
-        return ball0Energy + ball1Energy;
+        return balls[0].getMechanicalEnergy() + balls[1].getMechanicalEnergy();
     }
     void collisoinWithBorderEvent(Ball b){
         // detect collision with the border
-        if (b.x < b.radius) {
-            b.vx *= -1; // change direction of ball
-            b.x = b.radius;
+        if (b.position.getX() < b.radius) {
+            b.velocity.setXDir(1);
+            return false;
         }
-        if (b.x > areaWidth - b.radius) {
-            b.vx *= -1; // change direction of ball
-            b.x = areaWidth - b.radius;
+        if (b.position.getX() > areaWidth - b.radius) {
+            b.velocity.setXDir(-1);
+            return false;
+        }
+        if (b.position.getY() < b.radius) {
+            b.velocity.setYDir(1);
+            return true;
         }
     }
     void moveBalls(double deltaT){
         for (Ball b : balls) {
         // compute new position according to the speed of the ball
-        b.x += deltaT * b.vx;
-        b.y += deltaT * b.vy;
+            b.position.add_inplace(b.velocity.scalar(deltaT));
         }
     }
 
     void ballCollision(Ball ball1, Ball ball2) {
-        double u1x = ball1.vx;
-        double u1y = ball1.vy;
-        double u2x = ball2.vx;
-        double u2y = ball2.vy;
+        Vector2d u1 = ball1.velocity;
+        Vector2d u2 = ball2.velocity;
+        double totMass = ball1.mass + ball2.mass;
 
-        ball1.vx = ((ball1.mass - ball2.mass)  * u1x + 2 * ball2.mass * u2x) / (ball1.mass + ball2.mass);
-        ball1.vy = ((ball1.mass - ball2.mass)  * u1y + 2 * ball2.mass * u2y) / (ball1.mass + ball2.mass);
+        ball1.velocity = u1
+                .scalar((ball1.mass - ball2.mass) / totMass)
+                .add(u2
+                        .scalar(2 * ball2.mass / totMass));
 
-        ball2.vx = ((ball1.mass - ball2.mass)  * u1x + 2 * ball2.mass * u2x) / (ball1.mass + ball2.mass) - (u2x - u1x);
-        ball2.vy = ((ball1.mass - ball2.mass)  * u1y + 2 * ball2.mass * u2y) / (ball1.mass + ball2.mass) - (u2y - u1y);
+        ball2.velocity = u1
+                .scalar(2 * ball1.mass / totMass)
+                .add(u2
+                        .scalar((ball2.mass - ball1.mass) / totMass));
     }
 	
 	/**
